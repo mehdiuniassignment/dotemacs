@@ -1,3 +1,6 @@
+(setq warning-minimum-level :error)
+(set-language-environment "UTF-8")
+
 (require 'package)
 (add-to-list 'package-archives '("melpa" . "https://melpa.org/packages/") t)
 (package-initialize)
@@ -10,108 +13,147 @@
 
 (use-package emacs
   :init
-  (column-number-mode 1)
   (tool-bar-mode -1)
   (menu-bar-mode -1)
   (scroll-bar-mode -1)
-  (windmove-default-keybindings)
-  (winner-mode 1)
   (column-number-mode 1)
-  (global-hl-line-mode 1)
+  (delete-selection-mode 1)
   (show-paren-mode 1)
   (savehist-mode 1)
   (save-place-mode 1)
-  (delete-selection-mode 1)
+  (windmove-default-keybindings)
+  (winner-mode 1)
+  (global-auto-revert-mode t)
   (make-directory "~/.cache/emacs/backup" t)
   (make-directory "~/.cache/emacs/autosave" t)
+
   :config
   (set-face-attribute 'default nil
-		      :family "JetBrains Mono"
-		      :slant 'normal
-		      :weight 'normal
-		      :height 115)
-  (set-language-environment "UTF-8")
+                      :family "JetBrains Mono"
+                      :slant 'normal
+                      :weight 'normal
+                      :height 115)
+
+  (set-face-attribute 'mode-line nil
+                      :box nil)
+
+  ;; use my style for indenting C
+
+  (defconst my-c-style
+    '("k&r"
+      (indent-tabs-mode . t)
+      (tab-width . 8)
+      (c-basic-offset . 8)
+      (c-offsets-alist . ((arglist-intro . +)
+                          (arglist-cont . 0)
+                          (arglist-cont-nonempty . +)
+                          (arglist-close . 0)))))
+  (c-add-style "my-c-style" my-c-style)
+
+  (defun new-line-bellow ()
+    (interactive)
+    (end-of-line)
+    (newline)
+    (indent-for-tab-command))
+
+  (defun new-line-above ()
+    (interactive)
+    (beginning-of-line)
+    (newline)
+    (previous-line)
+    (indent-for-tab-command))
+
+  (defun copy-line (arg)
+    (interactive "p")
+    (kill-ring-save (line-beginning-position)
+                    (line-beginning-position (+ 1 arg))))
+
   :hook
   (prog-mode . display-line-numbers-mode)
+  (c-mode . (lambda () (c-set-style "my-c-style")))
+
   :custom
-  (warning-minimum-level :error)
+  (indent-tabs-mode nil)
   (use-dialog-box nil)
   (use-file-dialog nil)
   (inhibit-startup-screen t)
   (initial-scratch-message nil)
   (ring-bell-function 'ignore)
-  (frame-title-format "%b - GNU Emacs")
   (use-short-answers t)
   (scroll-conservatively 100)
   (truncate-lines 1)
   (truncate-partial-width-windows nil)
-  (c-default-style "k&r")
-  (c-basic-offset 8)
-  (indent-tabs-mode t)
+  (show-trailing-whitespace t)
+  (undo-limit 20000000)
+  (undo-strong-limit 40000000)
+  (global-auto-revert-non-file-buffers t)
+  (auto-revert-verbose nil)
   (backup-directory-alist '(("." . "~/.cache/emacs/backup/")))
-  (auto-save-file-name-transforms '((".*" "~/.cache/emacs/autosave/" t))))
+  (auto-save-file-name-transforms '((".*" "~/.cache/emacs/autosave/" t)))
 
-(use-package doom-themes
-  :ensure t
+  :bind (("C-c c" . global-display-fill-column-indicator-mode)
+         ("C-<return>" . new-line-bellow)
+         ("C-S-<return>" . new-line-above)
+         ("C-x w" . copy-line)
+         :map emacs-lisp-mode-map
+         ("C-c C-e" . eval-buffer)))
+
+(use-package elec-pair
   :init
-  (load-theme 'doom-gruvbox t))
-
-(use-package avy
-  :ensure t
-  :bind
-  (("C-:" . avy-goto-char)
-  ("C-'" . avy-goto-char-2)
-  ("M-g f" . avy-goto-line)
-  ("M-g w" . avy-goto-word-1)))
+  (electric-pair-mode 1)
+  :config
+  (defvar my-electic-pair-modes '(c-mode emacs-lisp-mode))
+  (defun my-inhibit-electric-pair-mode (char)
+    (not (member major-mode my-electic-pair-modes)))
+  :custom
+  (electric-pair-inhibit-predicate #'my-inhibit-electric-pair-mode))
 
 (use-package multiple-cursors
   :ensure t
-  :bind
-  (("C-S-SPC" . set-rectangular-region-anchor)
-   ("C->" . mc/mark-next-like-this)
-   ("C-<" . mc/mark-previous-like-this)
-   ("C-c C->" . mc/mark-all-like-this)
-   ("C-c C-SPC" . mc/edit-lines)))
+  :bind (("C-c }" . mc/edit-lines)
+         ("C-c ]" . mc/mark-next-like-this)
+         ("C-c [" . mc/mark-previous-like-this)
+         ("C-c {" . mc/mark-all-like-this)
+         :map mc/keymap
+         ("<return>" . nil)))
 
-(use-package tree-sitter-langs
-  :ensure t)
-
-(use-package tree-sitter
+(use-package phi-search
   :ensure t
-  :init
-  (global-tree-sitter-mode)
-  :hook
-  (tree-sitter-after-on . tree-sitter-hl-mode))
-
-(use-package eglot
-  :ensure t
-  :hook
-  ((c-mode c++-mode) . eglot-ensure)
-  (before-save . eglot-format)
-  :custom
-  (eglot-ignored-server-capabilities '(:inlayHintProvider))
-  :bind (:map eglot-mode-map
-  ("C-c r" . eglot-rename)
-  ("C-c f" . eglot-format)
-  ("C-c C-f" . eglot-format-buffer)
-  ("C-c q" . eglot-code-action-quickfix)
-  ("C-c a" . eglot-code-actions)
-  ("C-c e" . eglot-code-action-extract)
-  ("C-c i" . eglot-code-action-inline)
-  ("C-c C-r" . eglot-code-action-rewrite)
-  ("C-c o" . eglot-code-action-organize-imports)))
+  :bind (("C-s" . phi-search)
+         ("C-r" . phi-search-backward)))
 
 (use-package yasnippet
   :ensure t
   :init
   (yas-global-mode 1))
 
+(use-package avy
+  :ensure t
+  :bind (("C-c '" . avy-goto-char)
+         ("C-c ;" . avy-goto-char-2)))
+
+(use-package expand-region
+  :ensure t
+  :bind (("M-*" . er/expand-region)))
+
+(use-package change-inner
+  :requires expand-region
+  :ensure t
+  :bind (("M-i" . change-inner)
+         ("M-o" . change-outer)))
+
+(use-package move-dup
+  :ensure t
+  :bind (("M-<up>" . move-dup-move-lines-up)
+         ("M-<down>" . move-dup-move-lines-down)
+         ("M-S-<up>" . move-dup-duplicate-up)
+         ("M-S-<down>" . move-dup-duplicate-down)))
+
 (use-package vertico
   :ensure t
   :init
   (vertico-mode)
   :custom
-  (vertico-count 15)
   (vertico-cycle t))
 
 (use-package vertico-mouse
@@ -124,6 +166,15 @@
   (completion-styles '(orderless basic))
   (completion-category-defaults nil)
   (completion-category-overrides '((file (styles partial-completion)) (eglot (styles orderless)))))
+
+(use-package marginalia
+  :ensure t
+  :init
+  (marginalia-mode)
+  :custom
+  (marginalia-align 'right))
+
+;; just the example from the documentation
 
 (use-package consult
   :ensure t
@@ -176,22 +227,11 @@
   (xref-show-xrefs-function #'consult-xref)
   (xref-show-definitions-function #'consult-xref))
 
-(use-package marginalia
-  :ensure t
-  :init
-  (marginalia-mode)
-  :custom
-  (marginalia-align 'right))
-
-(use-package all-the-icons-completion
-  :ensure t
-  :init
-  (all-the-icons-completion-mode))
-
 (use-package corfu
   :ensure t
   :bind
-  (:map corfu-map ("S-SPC" . corfu-insert-separator))
+  (:map corfu-map
+        ("S-SPC" . corfu-insert-separator))
   :init
   (global-corfu-mode)
   (corfu-history-mode)
@@ -199,24 +239,52 @@
   :custom
   (corfu-cycle t)
   (corfu-auto-delay 0)
-  (corfu-auto t)
-  (corfu-preview-current nil)
+  (corfu-auto nil)
+  (corfu-preview-current t)
   (corfu-popupinfo-delay 0.2)
   (corfu-right-margin-width 1))
+
+(use-package tree-sitter-langs
+  :ensure t)
+
+(use-package tree-sitter
+  :ensure t
+  :init
+  (global-tree-sitter-mode)
+  :hook
+  (tree-sitter-after-on . tree-sitter-hl-mode))
+
+(use-package eglot
+  :ensure t
+  :hook
+  ((c-mode c++-mode) . eglot-ensure)
+  :custom
+  (eglot-ignored-server-capabilities '(:inlayHintProvider))
+  :bind (:map eglot-mode-map
+              ("C-c r" . eglot-rename)
+              ("C-c f" . eglot-format)
+              ("C-c C-f" . eglot-format-buffer)
+              ("C-c q" . eglot-code-action-quickfix)
+              ("C-c a" . eglot-code-actions)
+              ("C-c e" . eglot-code-action-extract)
+              ("C-c i" . eglot-code-action-inline)
+              ("C-c C-r" . eglot-code-action-rewrite)
+              ("C-c o" . eglot-code-action-organize-imports)))
 
 (use-package cape
   :ensure t
   :init
   (advice-add 'eglot-completion-at-point :around #'cape-wrap-buster))
-
-(use-package kind-icon
-  :ensure t
-  :after corfu
-  :custom
-  (kind-icon-default-face 'corfu-default)
-  (kind-icon-blend-background nil)
-  :config
-  (add-to-list 'corfu-margin-formatters #'kind-icon-margin-formatter))
-
-(use-package yaml-mode
-  :ensure t)
+(custom-set-variables
+ ;; custom-set-variables was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ '(package-selected-packages
+   '(cape eglot tree-sitter-langs corfu consult marginalia orderless vertico move-dup change-inner expand-region avy yasnippet phi-search multiple-cursors use-package)))
+(custom-set-faces
+ ;; custom-set-faces was added by Custom.
+ ;; If you edit it by hand, you could mess it up, so be careful.
+ ;; Your init file should contain only one such instance.
+ ;; If there is more than one, they won't work right.
+ )
