@@ -74,6 +74,7 @@
 
   :custom
   (indent-tabs-mode nil)
+  (fill-column 80)
   (use-dialog-box nil)
   (use-file-dialog nil)
   (inhibit-startup-screen t)
@@ -137,7 +138,6 @@
   :bind (("M-*" . er/expand-region)))
 
 (use-package change-inner
-  :requires expand-region
   :ensure t
   :bind (("M-i" . change-inner)
          ("M-o" . change-outer)))
@@ -275,13 +275,16 @@
   :ensure t
   :init
   (advice-add 'eglot-completion-at-point :around #'cape-wrap-buster))
+
+(use-package markdown-mode
+  :ensure t)
 (custom-set-variables
  ;; custom-set-variables was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
  ;; Your init file should contain only one such instance.
  ;; If there is more than one, they won't work right.
  '(package-selected-packages
-   '(cape eglot tree-sitter-langs corfu consult marginalia orderless vertico move-dup change-inner expand-region avy yasnippet phi-search multiple-cursors use-package)))
+   '(markdown-mode yasnippet vertico use-package tree-sitter-langs phi-search orderless multiple-cursors move-dup marginalia eglot corfu consult change-inner cape avy)))
 (custom-set-faces
  ;; custom-set-faces was added by Custom.
  ;; If you edit it by hand, you could mess it up, so be careful.
